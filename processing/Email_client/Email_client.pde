@@ -7,10 +7,13 @@ http://martinez-zea.info
 */
 
 import java.util.Properties;
+//import java mail lib
 import javax.mail.*;
 import javax.mail.internet.*;
+//import serial lib
 import processing.serial.*;
-
+//import XML lib
+import proxml.*;
 
 Serial ser;
 Message lastMessage;
@@ -18,14 +21,18 @@ int lastMessageCount;
 boolean firstCheck = true;
 String[] command;
 
+
+XMLElement configuration;
+XMLInOut xmlFile;
+
 //Username
-String email = "networked.objects@gmail.com";
+String email;
 //SMTP server address
-String smtp_host = "smtp.gmail.com";
+String smtp_host;
 //IMAP server address
-String imap_host = "imap.gmail.com";
+String imap_host;
 //Password
-String pass = "networked-objects";
+String pass;
 
 long past;
 
@@ -36,11 +43,27 @@ long interval = 10000;
 void setup() {
   size(200,200);
   lastMessageCount = 0;
+
+  //load XML file
+  xmlFile = new XMLInOut(this);
+  xmlFile.loadElement("config.xml");
   
   //Serial Communication
   //String portName = Serial.list()[0];
   //ser = new Serial(this, portName, 9600);
   past = millis();
+}
+
+void xmlEvent(XMLElement element){
+  configuration = element;
+
+  XMLElement login = configuration.getChild(0);
+
+  email = login.getAttribute("username");
+  pass = login.getAttribute("password");
+  smtp_host = login.getAttribute("smtp");
+  imap_host = login.getAttribute("imap");
+  
 }
 
 void draw(){
