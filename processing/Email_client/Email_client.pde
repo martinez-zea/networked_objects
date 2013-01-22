@@ -15,11 +15,25 @@ import processing.serial.*;
 //import XML lib
 import proxml.*;
 
-Serial ser;
+
+/*
+As of 22/01/2013 the official Arduino library doesn't work with 
+Processing 2.0 or higher, the following version has been tested with 
+2.0b7 and seems to work fine:
+
+https://github.com/pardo-bsso/processing-arduino
+*/
+
+
+import cc.arduino.*;
+
+Arduino arduino;
 Message lastMessage;
 int lastMessageCount;
 boolean firstCheck = true;
 String[] command;
+//sender of the last message
+String sender;
 
 
 XMLElement configuration;
@@ -38,7 +52,8 @@ long past;
 
 //how often do we check for new mail 
 long interval = 10000;
-
+int ledPin = 7;
+int photocellPin = 0;
 
 void setup() {
   size(200,200);
@@ -48,10 +63,14 @@ void setup() {
   xmlFile = new XMLInOut(this);
   xmlFile.loadElement("config.xml");
   
-  //Serial Communication
-  //String portName = Serial.list()[0];
-  //ser = new Serial(this, portName, 9600);
   past = millis();
+  
+  println(Arduino.list());
+  arduino = new Arduino(this, Arduino.list()[0], 57600);
+  
+  arduino.pinMode(ledPin, Arduino.OUTPUT);
+  arduino.pinMode(photocellPin, Arduino.INPUT);
+  
 }
 
 void xmlEvent(XMLElement element){
@@ -117,6 +136,7 @@ void checkMail() {
 
         println("--------- BEGIN MESSAGE------------");
         println("From: " + lastMessage.getFrom()[0]);
+        sender = lastMessage.getFrom()[0].toString();
         println("Subject: " + lastMessage.getSubject());
         println("Message:");
         String content = lastMessage.getContent().toString(); 
@@ -205,7 +225,7 @@ void sendMail(String to, String from, String subject, String body) {
 
 void keyReleased(){
   if(key == 's'){
-    sendMail("zea@randomlab.net", "networked-objects", "test", "hello world");
+    sendMail("networked.objects@gmail.com", "networked-objects", "test", "hello world");
   }
   if(key == 'c'){
     checkMail();
@@ -227,14 +247,20 @@ void executeCommand(String[] command){
   
   if(name.equals("led1")){
     if(parameter.equals("on")){
-      //ser.write('A');
+      arduino.digitalWrite(ledPin, Arduino.HIGH);
       println("request LED1 ON");
     }else if(parameter.equals("off")){
-      //ser.write('B');
+      arduino.digitalWrite(ledPin, Arduino.LOW);
       println("request LED1 OFF");
-    }else{
-      println("parameter unknown");
     }
+  }else if(name.equals("photocell")){
+      if(parameter.equals("read")){
+          println("Reading photocell");
+          int val = arduino.analogRead(photocellPin);
+          //sendMail("networked.objects@gmail.com", "networked.objects@gmail.com", "ldr reading", "Ldr value is: " + str(val) + ".");
+          sendMail(sender, "networked.objects@gmail.com", "ldr reading", "Photocell value is: " + str(val) + ".");
+          println("Photocell val: " + str(val));
+      } 
   }else{
     println("command unknown");
   }
