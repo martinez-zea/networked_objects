@@ -19,16 +19,20 @@ boolean firstCheck = true;
 String[] command;
 
 //Username
-String email = "usuario@gmail.com";
+String email = "networked.objects@gmail.com";
 //SMTP server address
 String smtp_host = "smtp.gmail.com";
 //IMAP server address
 String imap_host = "imap.gmail.com";
 //Password
-String pass = "password";
+String pass = "networked-objects";
 
 long past;
+
+//how often do we check for new mail 
 long interval = 10000;
+
+
 void setup() {
   size(200,200);
   lastMessageCount = 0;
@@ -43,7 +47,7 @@ void draw(){
   if(millis() - past > interval){
     checkMail();
     past = millis();
-    println("ckeking");
+    println("check for new messages ....");
   }
 }
 
@@ -91,12 +95,14 @@ void checkMail() {
         println("--------- BEGIN MESSAGE------------");
         println("From: " + lastMessage.getFrom()[0]);
         println("Subject: " + lastMessage.getSubject());
-        command = parseCommand(lastMessage.getSubject());
-        executeCommand(command);
         println("Message:");
         String content = lastMessage.getContent().toString(); 
         println(content);
         println("--------- END MESSAGE------------");
+
+        //parse and execute 
+        command = parseCommand(lastMessage.getSubject());
+        executeCommand(command);
 
     }else{
       println("You don't have new messages");
@@ -113,7 +119,7 @@ void checkMail() {
 }
 
 // Send email through the SMTP server
-void sendMail() {
+void sendMail(String to, String from, String subject, String body) {
 
   Properties props=new Properties();
 
@@ -145,15 +151,15 @@ void sendMail() {
     MimeMessage message = new MimeMessage(send_session);
 
     // Define sender
-    message.setFrom(new InternetAddress(email, "Cafetera"));
+    message.setFrom(new InternetAddress(email, from));
 
     // Define recipient
-    message.setRecipients(Message.RecipientType.TO, InternetAddress.parse("zea@randomlab.net", false));
+    message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to, false));
 
     // Set the subject
-    message.setSubject("Hello World!");
+    message.setSubject(subject);
     // Set body 
-    message.setText("Ping from processing. . .");
+    message.setText(body);
     
     
     //Authenticate to the SMTP server
@@ -164,7 +170,7 @@ void sendMail() {
     //Close connection
     transport.close(); 
    
-    println("Mail sent!");
+    println("Mail sent to: " + to);
  
 }
   //Basic error handler
@@ -176,7 +182,7 @@ void sendMail() {
 
 void keyReleased(){
   if(key == 's'){
-    sendMail();
+    sendMail("zea@randomlab.net", "networked-objects", "test", "hello world");
   }
   if(key == 'c'){
     checkMail();
@@ -198,9 +204,11 @@ void executeCommand(String[] command){
   
   if(name.equals("led1")){
     if(parameter.equals("on")){
-      ser.write('A');
+      //ser.write('A');
+      println("request LED1 ON");
     }else if(parameter.equals("off")){
-      ser.write('B');
+      //ser.write('B');
+      println("request LED1 OFF");
     }else{
       println("parameter unknown");
     }
