@@ -1,6 +1,9 @@
 /*
-*Cliente de email desarrollado para la clase de objetos en red
-*de la maestria en artes electronicas de la untref
+Mail Client developed to Networked Objects workshop
+FoamCity
+January - 2013
+
+http://martinez-zea.info
 */
 
 import java.util.Properties;
@@ -9,16 +12,19 @@ import javax.mail.internet.*;
 import processing.serial.*;
 
 
-
 Serial ser;
 Message lastMessage;
 int lastMessageCount;
 boolean firstCheck = true;
 String[] command;
 
+//Username
 String email = "usuario@gmail.com";
+//SMTP server address
 String smtp_host = "smtp.gmail.com";
+//IMAP server address
 String imap_host = "imap.gmail.com";
+//Password
 String pass = "password";
 
 long past;
@@ -27,8 +33,9 @@ void setup() {
   size(200,200);
   lastMessageCount = 0;
   
-  String portName = Serial.list()[0];
-  ser = new Serial(this, portName, 9600);
+  //Serial Communication
+  //String portName = Serial.list()[0];
+  //ser = new Serial(this, portName, 9600);
   past = millis();
 }
 
@@ -49,7 +56,7 @@ void checkMail() {
     
     props.put("mail.imap.port", "993");
     
-    //seguridad
+    //security
     /*
     props.put("mail.imap.starttls.enable", "true");
     props.setProperty("mail.imap.socketFactory.fallback", "false");
@@ -57,12 +64,12 @@ void checkMail() {
     */
     props.setProperty("mail.store.protocol", "imaps");
     
-    // Crea una sesion
+    //Create a new session
     Session receive_session = Session.getDefaultInstance(props, null);
     Store store = receive_session.getStore("imaps");
     store.connect(imap_host, email, pass);
     
-    // Obtiene el Inbox
+    //Get Inbox information
     Folder folder = store.getFolder("INBOX");
     folder.open(Folder.READ_ONLY);
     System.out.println(folder.getMessageCount() + " total messages.");
@@ -75,7 +82,7 @@ void checkMail() {
         firstCheck = false;
         
       }else{
-        println("normal check");
+        println("regular check");
         int newMessageCount = abs(folder.getMessageCount() - lastMessageCount);
         lastMessage = folder.getMessages()[folder.getMessageCount() - 1];
         lastMessageCount = folder.getMessageCount();
@@ -92,69 +99,75 @@ void checkMail() {
         println("--------- END MESSAGE------------");
 
     }else{
-      println("Usted no teine mensajes nuevos");
+      println("You don't have new messages");
     }
     
-    // Cierra la sesion
+    // Close session
     folder.close(false);
     store.close();
   } 
-  // Gestion de errores muy basica
+  // Basic error handler
   catch (Exception e) {
     e.printStackTrace();
   }
 }
 
-// Envia email a travez de smtp
+// Send email through the SMTP server
 void sendMail() {
 
   Properties props=new Properties();
 
-  // SMTP Session for gmail
+  // SMTP Session for Gmail
   
   props.put("mail.transport.protocol", "smtp");
   props.put("mail.smtp.host", smtp_host);
   props.put("mail.smtp.port", "587");
   props.put("mail.smtp.auth", "true");
   
-  // Necesitamos TLS para gmail
+  // TLS setting for Gmail
   props.put("mail.smtp.starttls.enable","true");
+ 
   /*
-  //configuracion para ssl
+  //SSL configuration
   props.put("mail.transport.protocol", "smtps");
   props.put("mail.smtp.host", server);
   props.put("mail.smtp.socketFactory.port", "587");
   props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
   props.put("mail.smtp.socketFactory.fallback", "false");
   */
-  // Crea una sesion
+ 
+  // Creates new session
   Session send_session = Session.getInstance(props, null);
 
   try
   {
-    // Crea un nuevo mensaje
+    // Create new message
     MimeMessage message = new MimeMessage(send_session);
 
-    // Define el remitente
+    // Define sender
     message.setFrom(new InternetAddress(email, "Cafetera"));
 
-    // Define el destinatario
+    // Define recipient
     message.setRecipients(Message.RecipientType.TO, InternetAddress.parse("zea@randomlab.net", false));
 
-    //Asunto y cuerpo del mensaje
+    // Set the subject
     message.setSubject("Hello World!");
+    // Set body 
     message.setText("Ping from processing. . .");
     
     
-    //Autenticacion y envio del mensaje
+    //Authenticate to the SMTP server
     Transport transport = send_session.getTransport("smtp");
     transport.connect(smtp_host, 587, email, pass );
+    //Send E-mail
     transport.sendMessage(message, message.getAllRecipients());
+    //Close connection
     transport.close(); 
    
     println("Mail sent!");
  
 }
+  //Basic error handler
   catch(Exception e)
   {
     e.printStackTrace();
@@ -171,7 +184,7 @@ void keyReleased(){
 }
 
 
-//aca parseamos la data que entra
+//Parsing input data
 String[] parseCommand(String message){
     String[] command = split(message, ' ');
     return command ;   
