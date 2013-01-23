@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+    <configuration>
+        <login username="user@gmail.com"
+               password="the password"
+               smtp="smtp.gmail.com"
+               imap="imap.gmail.com">
+    </configuration>
+</xml>
