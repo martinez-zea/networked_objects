@@ -71,6 +71,8 @@ void setup() {
   arduino.pinMode(ledPin, Arduino.OUTPUT);
   arduino.pinMode(photocellPin, Arduino.INPUT);
   
+  arduino.digitalWrite(ledPin, Arduino.LOW);
+  
 }
 
 void xmlEvent(XMLElement element){
@@ -138,6 +140,7 @@ void checkMail() {
         println("From: " + lastMessage.getFrom()[0]);
         sender = lastMessage.getFrom()[0].toString();
         println("Subject: " + lastMessage.getSubject());
+        String subject = lastMessage.getSubject().toString();
         println("Message:");
         String content = lastMessage.getContent().toString(); 
         println(content);
@@ -145,7 +148,15 @@ void checkMail() {
 
         //parse and execute 
         command = parseCommand(lastMessage.getSubject());
-        executeCommand(command);
+        //executeCommand(command);
+        
+        /*
+        *send the command to the match function
+        *we make sure it's lowercase because the function
+        *is not case sensitive.
+        */
+        
+        matchCommand(subject.toLowerCase()); 
 
     }else{
       println("You don't have new messages");
@@ -239,13 +250,33 @@ String[] parseCommand(String message){
     return command ;   
 }
 
+
+
+void matchCommand(String subject){
+  String[] result1 = match(subject, "party");
+  String[] result2 = match(subject,"don't");
+  String message;
+  if(result1 != null && result2 == null){
+    message = "Let's party, yeah !!! :D ";
+    println(message);
+    arduino.digitalWrite(ledPin, Arduino.HIGH);
+  }else if(result1 != null && result2 != null){
+    message = "Party pooper :'( ";
+    println(message);    
+    arduino.digitalWrite(ledPin, Arduino.LOW);
+  }else{
+    message = "I don't get it, maybe misspelling ?";
+  }
+  sendMail(sender, "networked.objects@gmail.com", "Party", message);
+}
+
 void executeCommand(String[] command){
   String name = command[0];
   String parameter = command[1];
   println("name " + name);
   println("param " + parameter);
   
-  if(name.equals("led1")){
+  if(name.equals("party")){
     if(parameter.equals("on")){
       arduino.digitalWrite(ledPin, Arduino.HIGH);
       println("request LED1 ON");
