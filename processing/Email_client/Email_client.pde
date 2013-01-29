@@ -1,5 +1,5 @@
 /*
-Mail Client developed to Networked Objects workshop
+Mail Client developed for Networked Objects workshop
 FoamCity
 January - 2013
 
