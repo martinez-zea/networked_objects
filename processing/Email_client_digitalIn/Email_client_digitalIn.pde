@@ -32,8 +32,6 @@ Message lastMessage;
 int lastMessageCount;
 boolean firstCheck = true;
 String[] command;
-//sender of the last message
-String sender;
 
 
 XMLElement configuration;
@@ -48,17 +46,9 @@ String imap_host;
 //Password
 String pass;
 
-long past;
-int buttonState;
-//send email flag
-boolean doSendEmail = false;
-
-//how often do we check for new mail 
-long interval = 10000;
-
-int ledPin = 7;
-int photocellPin = 0;
-int buttonPin = 6;
+int buttonPin = 8;
+int pastState = 0;
+int pressCount = 0;
 
 void setup() {
   size(200,200);
@@ -68,16 +58,11 @@ void setup() {
   xmlFile = new XMLInOut(this);
   xmlFile.loadElement("config.xml");
   
-  past = millis();
   
   println(Arduino.list());
   arduino = new Arduino(this, Arduino.list()[0], 57600);
   
-  arduino.pinMode(ledPin, Arduino.OUTPUT);
-  arduino.pinMode(photocellPin, Arduino.INPUT);
   arduino.pinMode(buttonPin, Arduino.INPUT);
-  //first turn the led off
-  arduino.digitalWrite(ledPin, Arduino.LOW);
   
 }
 
@@ -94,26 +79,29 @@ void xmlEvent(XMLElement element){
 }
 
 void draw(){
-  //if enough time has passed, check for new emails
+  background(0);
+  //println(val);
   
-  if(millis() - past > interval){
-    checkMail();
-    past = millis();
-    println("check for new messages ....");
+  int currentState = arduino.digitalRead(buttonPin);
+  //println(currentState);
+  if(currentState == 1 && pastState == 0){
+    pressCount++; // add 1 to the press count
+    println("button was just pressed");
+    println("button has been pressed " + str(pressCount) + " times.");
+    sendMail("cmart@decolector.net", "networked.objects@gmail.com", "button pressed", "Button pressed, it has been pressed " + str(pressCount) + " times.");
   }
-  /*
-  if(arduino.digitalRead(buttinPin) == 1 && buttonState == 0){
-    println("button pressed");
-    sendMail("networked.objects@gmail.com", "networked-objects", "button state", "the button is on");
-  }
-  */
+  //update past reading
+  pastState = currentState;
 }
 
 
+//Check email
 void checkMail() {
   try {
     
-    Properties props = new Properties();    
+    Properties props = new Properties();
+
+    
     props.put("mail.imap.port", "993");
     
     //security
@@ -150,7 +138,6 @@ void checkMail() {
 
         println("--------- BEGIN MESSAGE------------");
         println("From: " + lastMessage.getFrom()[0]);
-        sender = lastMessage.getFrom()[0].toString();
         println("Subject: " + lastMessage.getSubject());
         String subject = lastMessage.getSubject().toString();
         println("Message:");
@@ -158,14 +145,9 @@ void checkMail() {
         println(content);
         println("--------- END MESSAGE------------");
 
-        //ACTIONS TO TAKE IF THERE IS A NEW MESSAGE
         /*
-        *send the command to the match function
-        *we make sure it's lowercase because the function
-        *is not case sensitive.
+        //ACTIONS TO TAKE IF THERE IS A NEW MESSAGE
         */
-        
-        matchCommand(subject.toLowerCase()); 
 
     }else{
       println("You don't have new messages");
@@ -180,6 +162,7 @@ void checkMail() {
     e.printStackTrace();
   }
 }
+
 
 // Send email through the SMTP server
 void sendMail(String to, String from, String subject, String body) {
@@ -247,61 +230,7 @@ void keyReleased(){
   if(key == 's'){
     sendMail("networked.objects@gmail.com", "networked-objects", "test", "hello world");
   }
-  if(key == 'c'){
-    checkMail();
-  }
-}
-
-
-//Parsing input data
-String[] parseCommand(String message){
-    String[] command = split(message, ' ');
-    return command ;   
 }
 
 
 
-void matchCommand(String subject){
-  String[] result1 = match(subject, "party");
-  String[] result2 = match(subject,"don't");
-  String message;
-  if(result1 != null && result2 == null){
-    message = "Let's party, yeah !!! :D ";
-    println(message);
-    arduino.digitalWrite(ledPin, Arduino.HIGH);
-  }else if(result1 != null && result2 != null){
-    message = "Party pooper :'( ";
-    println(message);    
-    arduino.digitalWrite(ledPin, Arduino.LOW);
-  }else{
-    message = "I don't get it, maybe misspelling ?";
-  }
-  sendMail(sender, "networked.objects@gmail.com", "Party", message);
-}
-
-void executeCommand(String[] command){
-  String name = command[0];
-  String parameter = command[1];
-  println("name " + name);
-  println("param " + parameter);
-  
-  if(name.equals("party")){
-    if(parameter.equals("on")){
-      arduino.digitalWrite(ledPin, Arduino.HIGH);
-      println("request LED1 ON");
-    }else if(parameter.equals("off")){
-      arduino.digitalWrite(ledPin, Arduino.LOW);
-      println("request LED1 OFF");
-    }
-  }else if(name.equals("photocell")){
-      if(parameter.equals("read")){
-          println("Reading photocell");
-          int val = arduino.analogRead(photocellPin);
-          //sendMail("networked.objects@gmail.com", "networked.objects@gmail.com", "ldr reading", "Ldr value is: " + str(val) + ".");
-          sendMail(sender, "networked.objects@gmail.com", "ldr reading", "Photocell value is: " + str(val) + ".");
-          println("Photocell val: " + str(val));
-      } 
-  }else{
-    println("command unknown");
-  }
-}

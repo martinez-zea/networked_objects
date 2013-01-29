@@ -1,6 +1,6 @@
 /*
-Mail Client developed to Networked Objects workshop
-FoamCity
+Mail Client and analog input, callibration and edge detection. 
+Developed for Networked Objects workshop at FoamCity ( http://foamcity.org )
 January - 2013
 
 http://martinez-zea.info
@@ -31,10 +31,6 @@ Arduino arduino;
 Message lastMessage;
 int lastMessageCount;
 boolean firstCheck = true;
-String[] command;
-//sender of the last message
-String sender;
-
 
 XMLElement configuration;
 XMLInOut xmlFile;
@@ -48,36 +44,41 @@ String imap_host;
 //Password
 String pass;
 
-long past;
-int buttonState;
-//send email flag
-boolean doSendEmail = false;
+int photoPin = 0;
+int pastState = 0;
+int pressCount = 0;
 
-//how often do we check for new mail 
-long interval = 10000;
-
-int ledPin = 7;
-int photocellPin = 0;
-int buttonPin = 6;
+//caibration variables
+int sensMin = 1023;
+int sensMax = 0;
+int sensVal = 0;
+int threshold = 0;
 
 void setup() {
   size(200,200);
-  lastMessageCount = 0;
 
   //load XML file
   xmlFile = new XMLInOut(this);
   xmlFile.loadElement("config.xml");
   
-  past = millis();
-  
   println(Arduino.list());
   arduino = new Arduino(this, Arduino.list()[0], 57600);
   
-  arduino.pinMode(ledPin, Arduino.OUTPUT);
-  arduino.pinMode(photocellPin, Arduino.INPUT);
-  arduino.pinMode(buttonPin, Arduino.INPUT);
-  //first turn the led off
-  arduino.digitalWrite(ledPin, Arduino.LOW);
+  arduino.pinMode(photoPin, Arduino.INPUT);
+  
+  //calibration
+  while(millis() < 5000){
+    println("Calibrating ...");
+    sensVal = arduino.analogRead(photoPin);
+    if(sensVal > sensMax){
+      sensMax = sensVal;
+    }
+    if(sensVal < sensMin){
+      sensMin = sensVal;
+    }
+  }
+  //the middle value between min and max is our threshold
+  threshold = sensMin + ((sensMax - sensMin)/2);
   
 }
 
@@ -94,26 +95,44 @@ void xmlEvent(XMLElement element){
 }
 
 void draw(){
-  //if enough time has passed, check for new emails
+  background(0);
   
-  if(millis() - past > interval){
-    checkMail();
-    past = millis();
-    println("check for new messages ....");
+  int photoRead = arduino.analogRead(photoPin);
+  //println(val);
+  
+  int currentState;
+  if(photoRead > threshold){
+    currentState = 1;
+  }else{
+    currentState = 0;
   }
-  /*
-  if(arduino.digitalRead(buttinPin) == 1 && buttonState == 0){
-    println("button pressed");
-    sendMail("networked.objects@gmail.com", "networked-objects", "button state", "the button is on");
+  //println(currentState);
+  if(currentState == 1 && pastState == 0){
+    pressCount++; // add 1 to the press count
+    println("button was just pressed");
+    println("button has been pressed " + str(pressCount) + " times.");
   }
-  */
+  //update past reading
+  pastState = currentState;
+  
+  //After some presses, send an email
+  if(pressCount > 20){
+    sendMail("networked.objects@gmail.com", "networked.objects@gmail.com", "button pressed", "Threshold has been passed " + str(pressCount) + " times.");
+    pressCount = 0;
+  }
 }
 
+
+/*
+Check incoming email
+*/
 
 void checkMail() {
   try {
     
-    Properties props = new Properties();    
+    Properties props = new Properties();
+
+    
     props.put("mail.imap.port", "993");
     
     //security
@@ -150,22 +169,12 @@ void checkMail() {
 
         println("--------- BEGIN MESSAGE------------");
         println("From: " + lastMessage.getFrom()[0]);
-        sender = lastMessage.getFrom()[0].toString();
         println("Subject: " + lastMessage.getSubject());
         String subject = lastMessage.getSubject().toString();
         println("Message:");
         String content = lastMessage.getContent().toString(); 
         println(content);
         println("--------- END MESSAGE------------");
-
-        //ACTIONS TO TAKE IF THERE IS A NEW MESSAGE
-        /*
-        *send the command to the match function
-        *we make sure it's lowercase because the function
-        *is not case sensitive.
-        */
-        
-        matchCommand(subject.toLowerCase()); 
 
     }else{
       println("You don't have new messages");
@@ -180,7 +189,6 @@ void checkMail() {
     e.printStackTrace();
   }
 }
-
 // Send email through the SMTP server
 void sendMail(String to, String from, String subject, String body) {
 
@@ -247,61 +255,8 @@ void keyReleased(){
   if(key == 's'){
     sendMail("networked.objects@gmail.com", "networked-objects", "test", "hello world");
   }
-  if(key == 'c'){
-    checkMail();
-  }
-}
-
-
-//Parsing input data
-String[] parseCommand(String message){
-    String[] command = split(message, ' ');
-    return command ;   
 }
 
 
 
-void matchCommand(String subject){
-  String[] result1 = match(subject, "party");
-  String[] result2 = match(subject,"don't");
-  String message;
-  if(result1 != null && result2 == null){
-    message = "Let's party, yeah !!! :D ";
-    println(message);
-    arduino.digitalWrite(ledPin, Arduino.HIGH);
-  }else if(result1 != null && result2 != null){
-    message = "Party pooper :'( ";
-    println(message);    
-    arduino.digitalWrite(ledPin, Arduino.LOW);
-  }else{
-    message = "I don't get it, maybe misspelling ?";
-  }
-  sendMail(sender, "networked.objects@gmail.com", "Party", message);
-}
 
-void executeCommand(String[] command){
-  String name = command[0];
-  String parameter = command[1];
-  println("name " + name);
-  println("param " + parameter);
-  
-  if(name.equals("party")){
-    if(parameter.equals("on")){
-      arduino.digitalWrite(ledPin, Arduino.HIGH);
-      println("request LED1 ON");
-    }else if(parameter.equals("off")){
-      arduino.digitalWrite(ledPin, Arduino.LOW);
-      println("request LED1 OFF");
-    }
-  }else if(name.equals("photocell")){
-      if(parameter.equals("read")){
-          println("Reading photocell");
-          int val = arduino.analogRead(photocellPin);
-          //sendMail("networked.objects@gmail.com", "networked.objects@gmail.com", "ldr reading", "Ldr value is: " + str(val) + ".");
-          sendMail(sender, "networked.objects@gmail.com", "ldr reading", "Photocell value is: " + str(val) + ".");
-          println("Photocell val: " + str(val));
-      } 
-  }else{
-    println("command unknown");
-  }
-}
